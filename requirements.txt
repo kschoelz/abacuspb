@@ -1,0 +1,3 @@
+Flask
+Flask-RESTful (Bug in pip auto-install: fields.py -> In Float(), remove 'repr' function in return value)
+PyMongo

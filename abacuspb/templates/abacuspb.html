@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="icon" href="static/img/favicon.ico">
+    
+    <title>AbacusPB: Your Personal Banker</title>
+
+	<!-- Bootstrap core CSS -->
+    <link href="static/lib/bootstrap/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap theme -->
+    <link href="static/lib/bootstrap/css/bootstrap-theme.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link href="static/lib/font-awesome/css/font-awesome.min.css" rel="stylesheet">
+
+	<!-- AbacusPB CSS -->
+	<link href="static/css/abacuspb.css" rel="stylesheet">
+	
+    <!-- TODO: Temp styles from Bootstrap templates -->
+    <link href="static/css/dashboard.css" rel="stylesheet">
+	<link href="static/css/theme.css" rel="stylesheet">
+  </head>
+
+  <body role="document">
+  	
+  	<!-- Fixed top navbar -->
+    <div class="navbar navbar-inverse navbar-fixed-top" role="navigation">
+      <div class="container">
+        <div class="navbar-header">
+          <button type="button" class="navbar-toggle" data-toggle="collapse" data-target=".navbar-collapse">
+            <span class="sr-only">Toggle navigation</span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+          </button>
+          <a class="navbar-brand" href="#">AbacusPB</a>
+        </div>
+        <div class="navbar-collapse collapse">
+          <ul class="nav navbar-nav">
+            <li><a href="#"><i class="fa fa-usd"></i> Cash Flow</a></li>
+            <li><a href="#"><i class="fa fa-bank"></i> Investments</a></li>
+            <li><a href="#"><i class="fa fa-home"></i> Property</a></li>
+            <li><a href="#"><i class="fa fa-credit-card"></i> Debt</a></li>
+          </ul>
+          <ul class="nav navbar-nav navbar-right">
+          	<li class="dropdown">
+              <a href="#" class="dropdown-toggle" data-toggle="dropdown"><i class="fa fa-bar-chart-o"></i> <span class="caret"></span></a>
+              <ul class="dropdown-menu" role="menu">
+                <li><a href="#"><i class="fa fa-sliders fa-fw"></i> Budget</a></li>
+                <li><a href="#"><i class="fa fa-car fa-fw"></i> Vehicle Cost</a></li>
+                <li><a href="#"><i class="fa fa-usd fa-fw"></i> Balance</a></li>
+                <li><a href="#"><i class="fa fa-joomla fa-fw"></i> Statistics</a></li>
+                <li><a href="#"><i class="fa fa-clock-o fa-fw"></i> Trend Time</a></li>
+              </ul>
+            </li>
+            <!-- Settings Dropdown -->
+          	<li class="dropdown">
+          	  <a href="#" class="dropdown-toggle" data-toggle="dropdown"><i class="fa fa-gear"></i> <span class="caret"></span></a>
+          	  <ul class="dropdown-menu" role="menu">
+          	  	<li><a href="#"><i class="fa fa-sliders fa-fw"></i> Budget</a></li>
+          	  	<li><a data-toggle="modal" data-target="#categoriesModal"><i class="fa fa-cubes fa-fw"></i> Categories</a></li>
+          	  	<li><a data-toggle="modal" data-target="#accountsModal"><i class="fa fa-building fa-fw"></i> Accounts</a></li>
+          	  	<li><a href="#"><i class="fa fa-users fa-fw"></i> Payees</a></li>
+          	  	<li><a href="#"><i class="fa fa-calendar fa-fw"></i> Scheduled Transactions</a></li>
+          	  </ul>
+          	<li><a data-toggle="modal" data-target="#aboutModal"><i class="fa fa-question-circle"></i></a></li>
+          </ul>
+          <form class="navbar-form navbar-right">
+          	<div class="input-group">
+          	  <input type="text" class="form-control" placeholder="Find Payment or Deposit" />
+          	  <span class="input-group-btn">
+          	  	<button class="btn btn-default" type="button"><i class="fa fa-search"></i></button>
+          	  </span>
+          	</div>
+          </form>
+        </div><!--/.nav-collapse -->
+      </div>
+    </div>
+    
+    <!-- Modal - Settings Dropdown: categoriesModal -->
+	<div class="modal fade" id="categoriesModal" tabindex="-1" role="dialog" aria-labelledby="categoriesModalLabel" aria-hidden="true">
+	  <div class="modal-dialog">
+	    <div class="modal-content">
+	      <div class="modal-header">
+	        <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+	        <h4 class="modal-title" id="myModalLabel">Manage Categories</h4>
+	      </div>
+	      <div class="modal-body">
+	        Something goes here.
+	      </div>
+	      <div class="modal-footer">
+	        <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+	        <button type="button" class="btn btn-primary">Save changes</button>
+	      </div>
+	    </div>
+	  </div>
+	</div>
+    
+    <!-- Modal - Settings Dropdown: accountsModal -->
+	<div class="modal fade" id="accountsModal" tabindex="-1" role="dialog" aria-labelledby="accountsModalLabel" aria-hidden="true">
+	  <div class="modal-dialog">
+	    <div class="modal-content">
+	      <div class="modal-header">
+	        <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+	        <h4 class="modal-title" id="myModalLabel">Manage Accounts</h4>
+	      </div>
+	      <div class="modal-body">
+	        Something goes here.
+	      </div>
+	      <div class="modal-footer">
+	        <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+	        <button type="button" class="btn btn-primary">Save changes</button>
+	      </div>
+	    </div>
+	  </div>
+	</div>
+	
+	<!-- Modal - About: aboutModal -->
+	<div class="modal fade" id="aboutModal" tabindex="-1" role="dialog" aria-labelledby="aboutModalLabel" aria-hidden="true">
+	  <div class="modal-dialog">
+	    <div class="modal-content">
+	      <div class="modal-header">
+	        <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+	        <h4 class="modal-title" id="myModalLabel">Welcome to AbacusPB!</h4>
+	      </div>
+	      <div class="modal-body">
+	        AbacusPB is built to be your personal banker.
+	      </div>
+	      <div class="modal-footer">
+	        <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+	      </div>
+	    </div>
+	  </div>
+	</div>
+  	
+  	
+  	<div class="container">
+  		<div class="row">
+  			<!-- Left side nav -->
+  			<div class="col-lg-3">
+  				<div class="panel panel-default">
+  					<div class="panel panel-heading">
+  						Left nav heading
+  					</div>
+  					<div class="panel panel-body">
+  						Left nav body
+  					</div>
+  				</div>
+  			</div>
+  			<!-- Main Window -->
+  			<div class="col-lg-8">
+  			
+  			</div>
+  		</div>
+  	</div>
+  	
+  	<!-- <div class="container theme-showcase" role="main"> -->
+  		<!-- Sidebar Navigation --> <!--
+  		<div class="col-sm-3 col-md-2 sidebar">
+          <ul class="nav nav-sidebar">
+            <li class="active"><a href="#">Overview</a></li>
+            <li><a href="#">Reports</a></li>
+            <li><a href="#">Analytics</a></li>
+            <li><a href="#">Export</a></li>
+          </ul>
+          <ul class="nav nav-sidebar">
+            <li><a href="">Nav item</a></li>
+            <li><a href="">Nav item again</a></li>
+            <li><a href="">One more nav</a></li>
+            <li><a href="">Another nav item</a></li>
+            <li><a href="">More navigation</a></li>
+          </ul>
+          <ul class="nav nav-sidebar">
+            <li><a href="">Nav item again</a></li>
+            <li><a href="">One more nav</a></li>
+            <li><a href="">Another nav item</a></li>
+          </ul>
+        </div>
+        
+  		<!-- Main jumbotron for a primary marketing message or call to action -->
+   		<!-- <div class="jumbotron">
+    		<h1>Welcome to AbacusPB!</h1>
+        	<p>Your Personal Banker</p>
+        	<p><a href="#" class="btn btn-primary btn-lg" role="button">Learn more &raquo;</a></p>
+		</div>
+	</div> <!-- /container -->
+
+    <!-- Bootstrap core JavaScript
+    ================================================== -->
+    <!-- Placed at the end of the document so the pages load faster -->
+    <script src="static/lib/jquery/jquery-1.11.1.min.js"></script>
+    <script src="static/lib/bootstrap/js/bootstrap.min.js"></script>
+    <script src="static/lib/bootstrap/js/docs.min.js"></script>
+  </body>
+</html>
