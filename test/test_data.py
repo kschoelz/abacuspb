@@ -134,3 +134,46 @@ db_payees = [
         'name': 'Sandy Spring Bank'
     }
 ]
+
+######################
+# Category Test Data #
+######################
+category_1 = {
+    'name': 'Tithe',
+    'parent_id': None
+}
+
+category_2 = {
+    'name': 'Gas & Electric',
+    'parent_id': '1234567890'
+}
+
+category_put = { 'parent_id': '1234567890' }
+
+db_categories = [
+    {
+        'id': '53f69e77137a001e344259f1',
+        'name': 'Auto',
+        'parent_id': None
+    },
+    {
+        'id': '53f69e77137a001e344259fa',
+        'name': 'Gas',
+        'parent_id': '53f69e77137a001e344259f1' # Parent = Auto
+    },
+    {
+        'id': '53f69e77137a001e344259fb',
+        'name': 'Service',
+        'parent_id': '53f69e77137a001e344259f1' # Parent = Auto
+    },
+    {
+        'id': '53f69e77137a001e344259f2',
+        'name': 'Dining & Entertainment',
+        'parent_id': None
+    },
+    {
+        'id': '53f69e77137a001e344259f3',
+        'name': 'Tithe',
+        'parent_id': None
+    }
+]
