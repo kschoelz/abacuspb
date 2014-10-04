@@ -28,6 +28,7 @@ class AccountListAPI(Resource):
         self.reqparse.add_argument('bal_uncleared', type=float, location='json')
         self.reqparse.add_argument('bal_cleared', type=float, location='json')
         self.reqparse.add_argument('bal_reconciled', type=float, location='json')
+        self.reqparse.add_argument('budget_monitored', type=bool, default=False, location='json')
         super(AccountListAPI, self).__init__()
     
     def get(self):
@@ -61,6 +62,7 @@ class AccountListAPI(Resource):
             'bal_uncleared': 0.0,
             'bal_cleared': 0.0,
             'bal_reconciled': 0.0,
+            'budget_monitored': args['budget_monitored']
         }
         db.accounts.insert(account)
         return { 'account': marshal(account, account_fields) }, 201
@@ -76,6 +78,7 @@ class AccountAPI(Resource):
         self.reqparse.add_argument('bal_uncleared', type=float, location='json')
         self.reqparse.add_argument('bal_cleared', type=float, location='json')
         self.reqparse.add_argument('bal_reconciled', type=float, location='json')
+        self.reqparse.add_argument('budget_monitored', type=bool, location='json')
         super(AccountAPI, self).__init__()
     
     def get(self, id):
