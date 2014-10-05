@@ -303,9 +303,9 @@ class TransactionsAPI_TestCase(unittest.TestCase):
         rv = self.app.delete('/api/transactions/acct_testaccountname/53f69e77137a001e344259cb')
         obj = json.loads(rv.get_data())
         self.assertEqual(rv.status_code, 200)
-        self.assertEqual(obj['account']['bal_uncleared'], 2649.52)
-        self.assertEqual(obj['account']['bal_cleared'], -40.92)
-        self.assertEqual(obj['account']['bal_reconciled'], 1021.61)
+        self.assertEqual(obj['accounts'][0]['bal_uncleared'], 2649.52)
+        self.assertEqual(obj['accounts'][0]['bal_cleared'], -40.92)
+        self.assertEqual(obj['accounts'][0]['bal_reconciled'], 1021.61)
         self.assertFalse(db['acct_testaccountname'].find({'id':'53f69e77137a001e344259cb'}).count())
 
     def test_TransactionAPI_DELETE_TransactionClr(self):
@@ -315,9 +315,9 @@ class TransactionsAPI_TestCase(unittest.TestCase):
         rv = self.app.delete('/api/transactions/acct_testaccountname/53f69e77137a001e344259cb')
         obj = json.loads(rv.get_data())
         self.assertEqual(rv.status_code, 200)
-        self.assertEqual(obj['account']['bal_uncleared'], 2649.52)
-        self.assertEqual(obj['account']['bal_cleared'], -27.03)
-        self.assertEqual(obj['account']['bal_reconciled'], 1021.61)
+        self.assertEqual(obj['accounts'][0]['bal_uncleared'], 2649.52)
+        self.assertEqual(obj['accounts'][0]['bal_cleared'], -27.03)
+        self.assertEqual(obj['accounts'][0]['bal_reconciled'], 1021.61)
         self.assertFalse(db['acct_testaccountname'].find({'id':'53f69e77137a001e344259cb'}).count())
         
     def test_TransactionAPI_DELETE_TransactionRec(self):
@@ -327,7 +327,24 @@ class TransactionsAPI_TestCase(unittest.TestCase):
         rv = self.app.delete('/api/transactions/acct_testaccountname/53f69e77137a001e344259cb')
         obj = json.loads(rv.get_data())
         self.assertEqual(rv.status_code, 200)
-        self.assertEqual(obj['account']['bal_uncleared'], 2649.52)
-        self.assertEqual(obj['account']['bal_cleared'], -27.03)
-        self.assertEqual(obj['account']['bal_reconciled'], 1035.50)
+        self.assertEqual(obj['accounts'][0]['bal_uncleared'], 2649.52)
+        self.assertEqual(obj['accounts'][0]['bal_cleared'], -27.03)
+        self.assertEqual(obj['accounts'][0]['bal_reconciled'], 1035.50)
         self.assertFalse(db['acct_testaccountname'].find({'id':'53f69e77137a001e344259cb'}).count())
+    
+    # Transfer transaction tests for DELETE
+    def test_TransactionAPI_DELETE_TransferDeleteSuccess(self):
+        db.accounts.insert([test_data.db_account, test_data.db_account_2])
+        db['acct_testaccountname'].insert(test_data.db_transfer_transactions_fromAcct)
+        db['acct_toaccountname'].insert(test_data.db_transfer_transactions_toAcct)
+        rv = self.app.delete('/api/transactions/acct_testaccountname/53f69e77137a001e344259c7')
+        obj = json.loads(rv.get_data())
+        self.assertEqual(rv.status_code, 200)
+        self.assertEqual(obj['accounts'][0]['bal_uncleared'], 2735.63)
+        self.assertEqual(obj['accounts'][0]['bal_cleared'], 59.08)
+        self.assertEqual(obj['accounts'][0]['bal_reconciled'], 1021.61)
+        self.assertEqual(obj['accounts'][1]['bal_uncleared'], 0.00)
+        self.assertEqual(obj['accounts'][1]['bal_cleared'], 0.00)
+        self.assertEqual(obj['accounts'][1]['bal_reconciled'], 100.00)
+        
+        

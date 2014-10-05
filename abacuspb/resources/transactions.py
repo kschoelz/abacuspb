@@ -235,11 +235,28 @@ class TransactionAPI(Resource):
         """
         Delete a single transaction
         """
+        return_accts = []
+        
+        # Originating transaction
         account = db.accounts.find_one({'id': account_id})
         transaction = db[account_id].find_one({'id':trans_id})
         if not db[account_id].remove({'id':trans_id})['n']:
             abort(404)
+        originating_acct = self.update_balances_on_delete(account_id, account, transaction)
+        return_accts.append(originating_acct)
         
+        # Transfer transaction
+        if transaction['cat_or_acct_id'] != None and transaction['cat_or_acct_id'][0:5] == 'acct_':
+            transfer_account = db.accounts.find_one({'id': transaction['cat_or_acct_id']})
+            transfer_transaction = db[transaction['cat_or_acct_id']].find_one({'id': trans_id})
+            if not db[transaction['cat_or_acct_id']].remove({'id':trans_id})['n']:
+                abort(404)
+            transfer_acct = self.update_balances_on_delete(transaction['cat_or_acct_id'], transfer_account, transfer_transaction)
+            return_accts.append(transfer_acct)
+        
+        return { 'accounts': return_accts }
+
+    def update_balances_on_delete(self, account_id, account, transaction):
         bal_unclr = account['bal_uncleared']
         bal_clr = account['bal_cleared']
         bal_rec = account['bal_reconciled']
@@ -257,5 +274,6 @@ class TransactionAPI(Resource):
         db.accounts.update({'id': account_id}, {'$set': {'bal_uncleared': bal_unclr},
                                                 '$set': {'bal_cleared': bal_clr},
                                                 '$set': {'bal_reconciled': bal_rec}})
-        return { 'account': {'uri': '/api/accounts/' + account_id, 'bal_uncleared': bal_unclr,
-                             'bal_cleared': bal_clr, 'bal_reconciled': bal_rec} }
+        return { 'uri': '/api/accounts/' + account_id, 'bal_uncleared': bal_unclr,
+                 'bal_cleared': bal_clr, 'bal_reconciled': bal_rec}
+        

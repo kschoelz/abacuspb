@@ -81,50 +81,76 @@ db_transactions= [
         'date': datetime(2014,7,31),
         'type': 'DEP',
         'payee': 'Sandy Spring Bank',
-        # need: category/account, split -> consider fields.Nested
         'reconciled': 'R',
         'amount': 1145.06,
-        'memo': 'Sandy\'s Salary'
+        'memo': 'Sandy\'s Salary',
+        'cat_or_acct_id': '1'
     },
     {
         'id': '53f69e77137a001e344259c8',
         'date': datetime(2014,8,1),
         'type': 'EFT',
         'payee': 'Costco',
-        # need: category/account, split -> consider fields.Nested
         'reconciled': 'R',
         'amount': -123.45,
-        'memo': 'Test transaction memo'
+        'memo': 'Test transaction memo',
+        'cat_or_acct_id': '2'
     },
     {
         'id': '53f69e77137a001e344259c9',
         'date': datetime(2014,8,6),
         'type': 'EFT',
         'payee': 'Exxon',
-        # need: category/account, split -> consider fields.Nested
         'reconciled': 'C',
         'amount': -40.92,
-        'memo': ''
+        'memo': '',
+        'cat_or_acct_id': '2'
     },
     {
         'id': '53f69e77137a001e344259ca',
         'date': datetime(2014,8,18),
         'type': 'DEP',
         'payee': 'U.S. Government',
-        # need: category/account, split -> consider fields.Nested
         'reconciled': '',
         'amount': 2649.52,
-        'memo': 'Kyle\'s Salary'
+        'memo': 'Kyle\'s Salary',
+        'cat_or_acct_id': '1'
     },
     {
         'id': '53f69e77137a001e344259cb',
         'date': datetime(2014,8,12),
         'type': 'EFT',
         'payee': 'Amazon.com',
-        # need: category/account, split -> consider fields.Nested
         'reconciled': '',
         'amount': -13.89,
-        'memo': ''
+        'memo': '',
+        'cat_or_acct_id': '2'
+    }
+]
+
+db_transfer_transactions_fromAcct= [
+    {
+        'id': '53f69e77137a001e344259c7',
+        'date': datetime(2014,7,31),
+        'type': 'XFER',
+        'payee': 'To Savings',
+        'reconciled': 'C',
+        'amount': -100.00,
+        'memo': '',
+        'cat_or_acct_id': 'acct_toaccountname'
+    }
+]
+
+db_transfer_transactions_toAcct= [
+    {
+        'id': '53f69e77137a001e344259c7',
+        'date': datetime(2014,7,31),
+        'type': 'XFER',
+        'payee': 'To Savings',
+        'reconciled': 'R',
+        'amount': 100.00,
+        'memo': '',
+        'cat_or_acct_id': 'acct_testaccountname'
     }
 ]
 
