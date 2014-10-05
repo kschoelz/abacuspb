@@ -7,6 +7,7 @@ import pymongo
 category_fields = { # Request validator
     'name': fields.String,
     'parent_id': fields.String,
+    'budget_tracked': fields.Boolean,
     'uri': fields.Url('category')
 }
 
@@ -15,6 +16,7 @@ class CategoryListAPI(Resource):
         self.reqparse = reqparse.RequestParser()
         self.reqparse.add_argument('name', type=str, required=True, location='json')
         self.reqparse.add_argument('parent_id', type=str, location='json')
+        self.reqparse.add_argument('budget_tracked', type=bool, location='json')
         super(CategoryListAPI, self).__init__()
     
     def get(self):
@@ -46,6 +48,7 @@ class CategoryListAPI(Resource):
             'id': str(ObjectId()),
             'name': args['name'],
             'parent_id': args['parent_id'],
+            'budget_tracked': args['budget_tracked']
         }
         db.categories.insert(category)
         return { 'category': marshal(category, category_fields) }, 201
@@ -56,6 +59,7 @@ class CategoryAPI(Resource):
         self.reqparse = reqparse.RequestParser()
         self.reqparse.add_argument('name', type=str, location='json')
         self.reqparse.add_argument('parent_id', type=str, location='json')
+        self.reqparse.add_argument('budget_tracked', type=bool, location='json')
         super(CategoryAPI, self).__init__()
     
     def get(self, id):

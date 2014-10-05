@@ -177,26 +177,31 @@ db_categories = [
     {
         'id': '53f69e77137a001e344259f1',
         'name': 'Auto',
+        'budget_tracked': False,
         'parent_id': None
     },
     {
         'id': '53f69e77137a001e344259fa',
         'name': 'Gas',
+        'budget_tracked': True,
         'parent_id': '53f69e77137a001e344259f1' # Parent = Auto
     },
     {
         'id': '53f69e77137a001e344259fb',
         'name': 'Service',
+        'budget_tracked': True,
         'parent_id': '53f69e77137a001e344259f1' # Parent = Auto
     },
     {
         'id': '53f69e77137a001e344259f2',
         'name': 'Dining & Entertainment',
+        'budget_tracked': True,
         'parent_id': None
     },
     {
         'id': '53f69e77137a001e344259f3',
         'name': 'Tithe',
+        'budget_tracked': True,
         'parent_id': None
     }
 ]
