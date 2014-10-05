@@ -66,9 +66,8 @@ class TransactionListAPI(Resource):
         """
         Create a new transaction
         """
-        # Check if account exists
-        account = db.accounts.find_one({'id': account_id}) 
-        if account == None:
+        # Check if originating account exists
+        if not db.accounts.find_one({'id': account_id}):
             return { 'message': 'Account does not exist', 'status': 400 }, 400
         args = self.reqparse.parse_args()
         transaction = {
@@ -76,34 +75,56 @@ class TransactionListAPI(Resource):
             'date': datetime.strptime(args['date'],'%Y-%m-%d'),
             'type': args['type'],
             'payee': args['payee'],
-            # TODO: need category/account split
+            # TODO: need split
             'reconciled': args['reconciled'],
             'amount': args['amount'],
             'memo': args['memo'],
             'cat_or_acct_id': args['cat_or_acct_id']
         }
+        return_accts = []
+
+        # Originating account: 1) insert transaction, 2) calculate new balances
         db[account_id].insert(transaction)
+        originating_acct = self.calculate_new_balances(account_id, args['amount'], args['reconciled'])
+        return_accts.append(originating_acct)
+        
+        # Transfer account: 1) Check if transfer trans, 2) insert trans, 3) calculate new balances
+        if args['cat_or_acct_id'] != None and args['cat_or_acct_id'][0:5] == 'acct_':
+            # Check if transfer account exists
+            if not db.accounts.find_one({'id': args['cat_or_acct_id']}):
+                return { 'message': 'Transfer account does not exist', 'status': 400 }, 400
+            inv_transaction = transaction # Transaction ID stays same
+            inv_transaction['reconciled'] = '' # Don't assume we know this type
+            inv_transaction['amount'] = - args['amount']
+            inv_transaction['cat_or_acct_id'] = account_id # Set to originating account
+            db[args['cat_or_acct_id']].insert(inv_transaction)
+            transfer_acct = self.calculate_new_balances(args['cat_or_acct_id'], - args['amount'], '')
+            return_accts.append(transfer_acct)
+        
         transaction['date'] = args['date']
         transaction['uri'] = '/api/transactions/' + account_id + '/' + transaction['id']
         
-        # Calculate new balances
+        return { 'transaction': marshal(transaction, transaction_fields),
+                 'accounts': return_accts }, 201
+    
+    def calculate_new_balances(self, account_id, amount, reconciled):
+        account = db.accounts.find_one({'id': account_id})
         # update bal_uncleared (every transaction mods this)
-        bal_unclr = round(account['bal_uncleared'] + args['amount'], 2)
+        bal_unclr = round(account['bal_uncleared'] + amount, 2)
         db.accounts.update({'id': account_id}, {'$set': {'bal_uncleared': bal_unclr}})
         bal_clr = account['bal_cleared']
         bal_rec = account['bal_reconciled']
-        if args['reconciled'] in ['C', 'R']:
+        if reconciled in ['C', 'R']:
             # update bal_cleared (only cleared and reconciled transactions mod this)
-            bal_clr = round(account['bal_cleared'] + args['amount'], 2)
+            bal_clr = round(account['bal_cleared'] + amount, 2)
             db.accounts.update({'id': account_id}, {'$set': {'bal_cleared': bal_clr}})
-        if args['reconciled'] == 'R':
+        if reconciled == 'R':
             # update bal_reconciled (only reconciled transactions mod this)
-            bal_rec = round(account['bal_reconciled'] + args['amount'], 2)
+            bal_rec = round(account['bal_reconciled'] + amount, 2)
             db.accounts.update({'id': account_id}, {'$set': {'bal_reconciled': bal_rec}})
-        
-        return { 'transaction': marshal(transaction, transaction_fields),
-                 'account': {'uri': '/api/accounts/' + account_id, 'bal_uncleared': bal_unclr,
-                             'bal_cleared': bal_clr, 'bal_reconciled': bal_rec} }, 201
+            
+        return { 'uri': '/api/accounts/' + account_id, 'bal_uncleared': bal_unclr,
+                 'bal_cleared': bal_clr, 'bal_reconciled': bal_rec }
 
 class TransactionAPI(Resource):
     def __init__(self):

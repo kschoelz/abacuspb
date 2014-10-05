@@ -10,10 +10,12 @@ class TransactionsAPI_TestCase(unittest.TestCase):
         self.app = abacuspb.app.test_client()
         db.accounts.drop()
         db['acct_testaccountname'].drop()
+        db['acct_toaccountname'].drop()
     
     def tearDown(self):
         db.accounts.drop()
         db['acct_testaccountname'].drop()
+        db['acct_toaccountname'].drop()
         test_data.db_transactions[4]['reconciled'] = '' # reset value
     
     # TransactionListAPI Tests
@@ -88,10 +90,10 @@ class TransactionsAPI_TestCase(unittest.TestCase):
         obj = json.loads(rv.get_data())
         self.assertEqual(rv.status_code, 201)
         self.assertIsNotNone(obj['transaction']['uri'])
-        self.assertEqual(obj['account']['uri'], '/api/accounts/acct_testaccountname')
-        self.assertEqual(obj['account']['bal_uncleared'], 2583.55)
-        self.assertEqual(obj['account']['bal_cleared'], -40.92)
-        self.assertEqual(obj['account']['bal_reconciled'], 1021.61)
+        self.assertEqual(obj['accounts'][0]['uri'], '/api/accounts/acct_testaccountname')
+        self.assertEqual(obj['accounts'][0]['bal_uncleared'], 2583.55)
+        self.assertEqual(obj['accounts'][0]['bal_cleared'], -40.92)
+        self.assertEqual(obj['accounts'][0]['bal_reconciled'], 1021.61)
         self.assertEqual(db.accounts.find_one()['bal_uncleared'], 2583.55)
         self.assertEqual(db.accounts.find_one()['bal_cleared'], -40.92)
         self.assertEqual(db.accounts.find_one()['bal_reconciled'], 1021.61)
@@ -105,10 +107,10 @@ class TransactionsAPI_TestCase(unittest.TestCase):
         obj = json.loads(rv.get_data())
         self.assertEqual(rv.status_code, 201)
         self.assertIsNotNone(obj['transaction']['uri'])
-        self.assertEqual(obj['account']['uri'], '/api/accounts/acct_testaccountname')
-        self.assertEqual(obj['account']['bal_uncleared'], 2583.55)
-        self.assertEqual(obj['account']['bal_cleared'], -93.00)
-        self.assertEqual(obj['account']['bal_reconciled'], 1021.61)
+        self.assertEqual(obj['accounts'][0]['uri'], '/api/accounts/acct_testaccountname')
+        self.assertEqual(obj['accounts'][0]['bal_uncleared'], 2583.55)
+        self.assertEqual(obj['accounts'][0]['bal_cleared'], -93.00)
+        self.assertEqual(obj['accounts'][0]['bal_reconciled'], 1021.61)
         self.assertEqual(db.accounts.find_one()['bal_uncleared'], 2583.55)
         self.assertEqual(db.accounts.find_one()['bal_cleared'], -93.00)
         self.assertEqual(db.accounts.find_one()['bal_reconciled'], 1021.61)
@@ -123,14 +125,46 @@ class TransactionsAPI_TestCase(unittest.TestCase):
         obj = json.loads(rv.get_data())
         self.assertEqual(rv.status_code, 201)
         self.assertIsNotNone(obj['transaction']['uri'])
-        self.assertEqual(obj['account']['uri'], '/api/accounts/acct_testaccountname')
-        self.assertEqual(obj['account']['bal_uncleared'], 2583.55)
-        self.assertEqual(obj['account']['bal_cleared'], -93.00)
-        self.assertEqual(obj['account']['bal_reconciled'], 969.53)
+        self.assertEqual(obj['accounts'][0]['uri'], '/api/accounts/acct_testaccountname')
+        self.assertEqual(obj['accounts'][0]['bal_uncleared'], 2583.55)
+        self.assertEqual(obj['accounts'][0]['bal_cleared'], -93.00)
+        self.assertEqual(obj['accounts'][0]['bal_reconciled'], 969.53)
         self.assertEqual(db.accounts.find_one()['bal_uncleared'], 2583.55)
         self.assertEqual(db.accounts.find_one()['bal_cleared'], -93.00)
         self.assertEqual(db.accounts.find_one()['bal_reconciled'], 969.53)
         test_data.transaction['reconciled'] = '' # Rest test data
+        
+    # Transfer transaction POST tests    
+    def test_TransactionListAPI_POST_TransferAcctDoesNotExist(self):
+        db.accounts.insert(test_data.db_account)
+        rv = self.app.post('/api/transactions/acct_testaccountname',
+                           data=json.dumps(test_data.transaction_transfer),
+                           content_type='application/json')
+        obj = json.loads(rv.get_data())
+        self.assertEqual(rv.status_code, 400)
+        self.assertEqual(obj['message'], 'Transfer account does not exist')
+     
+    def test_TransactionListAPI_POST_TransferSuccess(self):
+        db.accounts.insert([test_data.db_account, test_data.db_account_2])
+        rv = self.app.post('/api/transactions/acct_testaccountname',
+                           data=json.dumps(test_data.transaction_transfer),
+                           content_type='application/json')
+        obj = json.loads(rv.get_data())
+        self.assertEqual(rv.status_code, 201)
+        self.assertIsNotNone(obj['transaction']['uri'])
+        self.assertEqual(obj['accounts'][0]['uri'], '/api/accounts/acct_testaccountname')
+        self.assertEqual(obj['accounts'][0]['bal_uncleared'], 2535.63)
+        self.assertEqual(obj['accounts'][0]['bal_cleared'], -40.92)
+        self.assertEqual(obj['accounts'][0]['bal_reconciled'], 1021.61)
+        self.assertEqual(db.accounts.find_one({'id':'acct_testaccountname'})['bal_uncleared'], 2535.63)
+        self.assertEqual(db.accounts.find_one({'id':'acct_testaccountname'})['bal_cleared'], -40.92)
+        self.assertEqual(db.accounts.find_one({'id':'acct_testaccountname'})['bal_reconciled'], 1021.61)
+        self.assertEqual(obj['accounts'][1]['bal_uncleared'], 200.00)
+        self.assertEqual(obj['accounts'][1]['bal_cleared'], 100.00)
+        self.assertEqual(obj['accounts'][1]['bal_reconciled'], 200.00)
+        self.assertEqual(db.accounts.find_one({'id':'acct_toaccountname'})['bal_uncleared'], 200.00)
+        self.assertEqual(db.accounts.find_one({'id':'acct_toaccountname'})['bal_cleared'], 100.00)
+        self.assertEqual(db.accounts.find_one({'id':'acct_toaccountname'})['bal_reconciled'], 200.00)
         
     # TransactionAPI Tests
     def test_TransactionAPI_GET_TransactionDoesNotExist(self):

@@ -22,7 +22,20 @@ db_account = {
     'account_num': '1234567890',
     'bal_uncleared': 2635.63,
     'bal_cleared': -40.92,
-    'bal_reconciled': 1021.61
+    'bal_reconciled': 1021.61,
+    'budget_monitored': True
+}
+
+db_account_2 = {
+    'id': 'acct_toaccountname',
+    'name': 'To Account Name',
+    'type': 'Savings',
+    'bank_name': 'Bank of Catonsville',
+    'account_num': '0987654321',
+    'bal_uncleared': 100.00,
+    'bal_cleared': 100.00,
+    'bal_reconciled': 200.00,
+    'budget_monitored': False
 }
 
 #########################
@@ -36,6 +49,16 @@ transaction = {
     'reconciled': '',
     'amount': -52.08,
     'memo': ''
+}
+
+transaction_transfer = {
+    'date': '2014-08-10',
+    'type': 'XFER',
+    'payee': 'Move to Savings',
+    'reconciled': '',
+    'amount': -100.00,
+    'memo': '',
+    'cat_or_acct_id': 'acct_toaccountname'
 }
 
 transaction_put_amount = { # id = 53f69e77137a001e344259cb (Amazon.com) 
