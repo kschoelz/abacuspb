@@ -14,6 +14,7 @@ transaction_fields = { # Request validator
     'amount': fields.Float, # +/- dollar value
     'memo': fields.String,
     #'uri': fields.Url('transaction') # TODO: need to fix this? LOW PRIORITY (workaround in place)
+    'cat_or_acct_id': fields.String,
     'uri': fields.String
 }
 
@@ -30,6 +31,7 @@ class TransactionListAPI(Resource):
         self.reqparse.add_argument('reconciled', type=str, location='json')
         self.reqparse.add_argument('amount', type=float, location='json')
         self.reqparse.add_argument('memo', type=str, location='json')
+        self.reqparse.add_argument('cat_or_acct_id', type=str, location='json')
         super(TransactionListAPI, self).__init__()
     
     def get(self, account_id):
@@ -78,6 +80,7 @@ class TransactionListAPI(Resource):
             'reconciled': args['reconciled'],
             'amount': args['amount'],
             'memo': args['memo'],
+            'cat_or_acct_id': args['cat_or_acct_id']
         }
         db[account_id].insert(transaction)
         transaction['date'] = args['date']
@@ -112,6 +115,7 @@ class TransactionAPI(Resource):
         self.reqparse.add_argument('reconciled', type=str, location='json')
         self.reqparse.add_argument('amount', type=float, location='json')
         self.reqparse.add_argument('memo', type=str, location='json')
+        self.reqparse.add_argument('cat_or_acct_id', type=str, location='json')
         super(TransactionAPI, self).__init__()
     
     def get(self, account_id, trans_id):
