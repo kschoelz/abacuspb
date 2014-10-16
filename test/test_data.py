@@ -38,6 +38,18 @@ db_account_2 = {
     'budget_monitored': False
 }
 
+db_account_3 = {
+    'id': 'acct_to2accountname',
+    'name': 'To 2 Account Name',
+    'type': 'Savings',
+    'bank_name': 'Bank of Catonsville',
+    'account_num': '0987654320',
+    'bal_uncleared': 500.00,
+    'bal_cleared': 500.00,
+    'bal_reconciled': 600.00,
+    'budget_monitored': False
+}
+
 #########################
 # Transaction Test Data #
 #########################
@@ -138,6 +150,16 @@ db_transfer_transactions_fromAcct= [
         'amount': -100.00,
         'memo': '',
         'cat_or_acct_id': 'acct_toaccountname'
+    },
+    {
+        'id': '53f69e77137a001e344259c8',
+        'date': datetime(2014,7,31),
+        'type': 'XFER',
+        'payee': 'To Savings',
+        'reconciled': 'C',
+        'amount': -100.00,
+        'memo': '',
+        'cat_or_acct_id': 'somecategoryidstring'
     }
 ]
 
@@ -151,7 +173,7 @@ db_transfer_transactions_toAcct= [
         'amount': 100.00,
         'memo': '',
         'cat_or_acct_id': 'acct_testaccountname'
-    }
+    }                                  
 ]
 
 ###################

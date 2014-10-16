@@ -9,7 +9,7 @@ transaction_fields = { # Request validator
     'date': fields.String,
     'type': fields.String, # check num, EFT, etc.
     'payee': fields.String,
-    # need: category/account, split -> consider fields.Nested
+    # TODO: need split -> consider fields.Nested
     'reconciled': fields.String, # ' ' | 'C' | 'R'
     'amount': fields.Float, # +/- dollar value
     'memo': fields.String,
@@ -31,7 +31,7 @@ class TransactionListAPI(Resource):
         self.reqparse.add_argument('reconciled', type=str, location='json')
         self.reqparse.add_argument('amount', type=float, location='json')
         self.reqparse.add_argument('memo', type=str, location='json')
-        self.reqparse.add_argument('cat_or_acct_id', type=str, location='json')
+        self.reqparse.add_argument('cat_or_acct_id', type=str, default='', location='json')
         super(TransactionListAPI, self).__init__()
     
     def get(self, account_id):
@@ -67,7 +67,8 @@ class TransactionListAPI(Resource):
         Create a new transaction
         """
         # Check if originating account exists
-        if not db.accounts.find_one({'id': account_id}):
+        account = db.accounts.find_one({'id': account_id})
+        if not account:
             return { 'message': 'Account does not exist', 'status': 400 }, 400
         args = self.reqparse.parse_args()
         transaction = {
@@ -82,49 +83,50 @@ class TransactionListAPI(Resource):
             'cat_or_acct_id': args['cat_or_acct_id']
         }
         return_accts = []
-
+        
         # Originating account: 1) insert transaction, 2) calculate new balances
         db[account_id].insert(transaction)
-        originating_acct = self.calculate_new_balances(account_id, args['amount'], args['reconciled'])
-        return_accts.append(originating_acct)
+        updated_originating_acct = update_account_balances('CREATE_TRANS', account, transaction)
+        return_accts.append(updated_originating_acct)
         
         # Transfer account: 1) Check if transfer trans, 2) insert trans, 3) calculate new balances
-        if args['cat_or_acct_id'] != None and args['cat_or_acct_id'][0:5] == 'acct_':
+        if transaction['cat_or_acct_id'][0:5] == 'acct_':
             # Check if transfer account exists
-            if not db.accounts.find_one({'id': args['cat_or_acct_id']}):
+            transfer_account = db.accounts.find_one({'id': transaction['cat_or_acct_id']})
+            if not transfer_account:
                 return { 'message': 'Transfer account does not exist', 'status': 400 }, 400
-            inv_transaction = transaction # Transaction ID stays same
-            inv_transaction['reconciled'] = '' # Don't assume we know this type
-            inv_transaction['amount'] = - args['amount']
-            inv_transaction['cat_or_acct_id'] = account_id # Set to originating account
-            db[args['cat_or_acct_id']].insert(inv_transaction)
-            transfer_acct = self.calculate_new_balances(args['cat_or_acct_id'], - args['amount'], '')
-            return_accts.append(transfer_acct)
-        
+            transfer_transaction = transaction.copy() # Transaction ID stays same
+            transfer_transaction['reconciled'] = '' # Don't assume we know this type
+            transfer_transaction['amount'] = - transaction['amount']
+            transfer_transaction['cat_or_acct_id'] = account_id # Set to originating account
+            db[transaction['cat_or_acct_id']].insert(transfer_transaction)
+            updated_transfer_acct = update_account_balances('CREATE_TRANS', transfer_account, transfer_transaction)
+            return_accts.append(updated_transfer_acct)
+         
         transaction['date'] = args['date']
         transaction['uri'] = '/api/transactions/' + account_id + '/' + transaction['id']
         
         return { 'transaction': marshal(transaction, transaction_fields),
                  'accounts': return_accts }, 201
     
-    def calculate_new_balances(self, account_id, amount, reconciled):
-        account = db.accounts.find_one({'id': account_id})
-        # update bal_uncleared (every transaction mods this)
-        bal_unclr = round(account['bal_uncleared'] + amount, 2)
-        db.accounts.update({'id': account_id}, {'$set': {'bal_uncleared': bal_unclr}})
-        bal_clr = account['bal_cleared']
-        bal_rec = account['bal_reconciled']
-        if reconciled in ['C', 'R']:
-            # update bal_cleared (only cleared and reconciled transactions mod this)
-            bal_clr = round(account['bal_cleared'] + amount, 2)
-            db.accounts.update({'id': account_id}, {'$set': {'bal_cleared': bal_clr}})
-        if reconciled == 'R':
-            # update bal_reconciled (only reconciled transactions mod this)
-            bal_rec = round(account['bal_reconciled'] + amount, 2)
-            db.accounts.update({'id': account_id}, {'$set': {'bal_reconciled': bal_rec}})
-            
-        return { 'uri': '/api/accounts/' + account_id, 'bal_uncleared': bal_unclr,
-                 'bal_cleared': bal_clr, 'bal_reconciled': bal_rec }
+#     def update_balances_on_post(self, account_id, amount, reconciled):
+#         account = db.accounts.find_one({'id': account_id})
+#         # update bal_uncleared (every transaction mods this)
+#         bal_unclr = round(account['bal_uncleared'] + amount, 2)
+#         db.accounts.update({'id': account_id}, {'$set': {'bal_uncleared': bal_unclr}})
+#         bal_clr = account['bal_cleared']
+#         bal_rec = account['bal_reconciled']
+#         if reconciled in ['C', 'R']:
+#             # update bal_cleared (only cleared and reconciled transactions mod this)
+#             bal_clr = round(account['bal_cleared'] + amount, 2)
+#             db.accounts.update({'id': account_id}, {'$set': {'bal_cleared': bal_clr}})
+#         if reconciled == 'R':
+#             # update bal_reconciled (only reconciled transactions mod this)
+#             bal_rec = round(account['bal_reconciled'] + amount, 2)
+#             db.accounts.update({'id': account_id}, {'$set': {'bal_reconciled': bal_rec}})
+#             
+#         return { 'uri': '/api/accounts/' + account_id, 'bal_uncleared': bal_unclr,
+#                  'bal_cleared': bal_clr, 'bal_reconciled': bal_rec }
 
 class TransactionAPI(Resource):
     def __init__(self):
@@ -155,82 +157,109 @@ class TransactionAPI(Resource):
         """
         Update a single transaction
         """
-        # TODO: if linked to another account, will need to update that entry
-        transaction = db[account_id].find_one({'id':trans_id})
-        if transaction == None:
+        old_transaction = db[account_id].find_one({'id':trans_id})
+        if old_transaction == None:
             abort(404)
-        old_reconciled = transaction['reconciled']
-        old_amount = transaction['amount']
+        new_transaction = old_transaction.copy()
         
         args = self.reqparse.parse_args()
         for k, v in args.iteritems():
             if v != None:
-                if k == 'date':
-                    transaction[k] = datetime.strptime(v,'%Y-%m-%d')
+                if k == 'date': new_transaction[k] = datetime.strptime(v,'%Y-%m-%d')
                 else:
-                    transaction[k] = v
-        db[account_id].update({'id':trans_id}, transaction)
-        transaction['date'] = transaction['date'].strftime('%Y-%m-%d')
-        transaction['uri'] = '/api/transactions/' + account_id + '/' + trans_id
+                    new_transaction[k] = v
+                    # Check if transfer transaction for 'payee' and 'memo' only
+                    if old_transaction['cat_or_acct_id'][0:5] == 'acct_' and (k == 'payee' or k == 'memo'):
+                        db[old_transaction['cat_or_acct_id']].update({'id':trans_id}, {'$set': {k:v}})
+        db[account_id].update({'id':trans_id}, new_transaction)
+        new_transaction['date'] = new_transaction['date'].strftime('%Y-%m-%d')
+        new_transaction['uri'] = '/api/transactions/' + account_id + '/' + trans_id
         
-        # Calculate new balances
-        account = db.accounts.find_one({'id': account_id})
-        bal_unclr = account['bal_uncleared']
-        bal_clr = account['bal_cleared']
-        bal_rec = account['bal_reconciled']
+        return_accts = []
         
-        # Update amount first
-        if args['amount'] != None:
-            diff = round(old_amount - args['amount'], 2)
-            old_amount = args['amount']
-            if old_reconciled == '':
-                bal_unclr = round( account['bal_uncleared'] - diff, 2)
-            elif old_reconciled == 'C':
-                bal_unclr = round( account['bal_uncleared'] - diff, 2)
-                bal_clr = round( account['bal_cleared'] - diff, 2)
-            elif old_reconciled == 'R':
-                bal_unclr = round( account['bal_uncleared'] - diff, 2)
-                bal_clr = round( account['bal_cleared'] - diff, 2)
-                bal_rec = round( account['bal_reconciled'] - diff, 2)
+        # Originating account
+        if (old_transaction['amount'] != new_transaction['amount']) or (old_transaction['reconciled'] != new_transaction['reconciled']):
+            account = db.accounts.find_one({'id': account_id})
+            update_account_balances('DELETE_TRANS', account, old_transaction)
+            account = db.accounts.find_one({'id': account_id})
+            updated_originating_acct = update_account_balances('CREATE_TRANS', account, new_transaction)
+            return_accts.append(updated_originating_acct)
+
+        # Transfer account
+        if old_transaction['cat_or_acct_id'][0:5] == 'acct_':
+            if new_transaction['cat_or_acct_id'][0:5] != 'acct_':
+                print 'Account -> Category'
+                # Account -> Category
+                transfer_trans = db[old_transaction['cat_or_acct_id']].find_one({'id': trans_id})
+                # Delete transfer transaction
+                if not db[old_transaction['cat_or_acct_id']].remove({'id': trans_id})['n']:
+                    abort(404)
+                # Update transfer account balances only
+                transfer_account = db.accounts.find_one({'id': old_transaction['cat_or_acct_id']})
+                updated_transfer_acct = update_account_balances('DELETE_TRANS', transfer_account, transfer_trans)
+                return_accts.append(updated_transfer_acct)
+                
+            elif old_transaction['cat_or_acct_id'] != new_transaction['cat_or_acct_id']:
+                print 'Account -> Account'
+                # Account -> Account
+                transfer_trans = db[old_transaction['cat_or_acct_id']].find_one({'id': trans_id})
+                # Delete original transfer transaction
+                if not db[old_transaction['cat_or_acct_id']].remove({'id': trans_id})['n']:
+                    abort(404)
+                # Update original transfer account balances
+                old_transfer_account = db.accounts.find_one({'id': old_transaction['cat_or_acct_id']})
+                updated_old_transfer_acct = update_account_balances('DELETE_TRANS', old_transfer_account, transfer_trans)
+                return_accts.append(updated_old_transfer_acct)
+                
+                # Check if new transfer account exists
+                new_transfer_account = db.accounts.find_one({'id': new_transaction['cat_or_acct_id']})
+                if not new_transfer_account:
+                    return { 'message': 'Transfer account does not exist', 'status': 400 }, 400
+                # Create new transfer transaction
+                transfer_transaction = new_transaction.copy() # Transaction ID stays same
+                transfer_transaction['reconciled'] = '' # Don't assume we know this type
+                transfer_transaction['amount'] = - new_transaction['amount']
+                transfer_transaction['cat_or_acct_id'] = account_id # Set to originating account
+                db[new_transaction['cat_or_acct_id']].insert(transfer_transaction)
+                # Update new transfer account balances
+                updated_new_transfer_acct = update_account_balances('CREATE_TRANS', new_transfer_account, transfer_transaction)
+                return_accts.append(updated_new_transfer_acct)
             
-        # Update reconciled transition
-        if args['reconciled'] != None:
-            # Transition UP
-            if old_reconciled == '' and args['reconciled'] == 'C':
-                # bal_unclr = NO CHANGE
-                bal_clr = round( account['bal_cleared'] + old_amount, 2)
-                # bal_rec = NO CHANGE
-            elif old_reconciled == '' and args['reconciled'] == 'R':
-                # bal_unclr = NO CHANGE
-                bal_clr = round( account['bal_cleared'] + old_amount, 2)
-                bal_rec = round( account['bal_reconciled'] + old_amount, 2)
-            elif old_reconciled == 'C' and args['reconciled'] == 'R':
-                # bal_unclr = NO CHANGE
-                # bal_clr = NO CHANGE 
-                bal_rec = round( account['bal_reconciled'] + old_amount, 2)
+            elif old_transaction['amount'] != new_transaction['amount']:
+                print 'Account stays same, amount changes'
+                # Account stays the same, amount changes
+                # Update transfer transaction's amount (opposite of originating transaction amount)
+                db[new_transaction['cat_or_acct_id']].update({'id': trans_id}, {'$set': {'amount': -new_transaction['amount']}})
+                # Update transfer account balances
+                transfer_account = db.accounts.find_one({'id': new_transaction['cat_or_acct_id']})
+                update_account_balances('DELETE_TRANS', transfer_account, old_transaction)
+                transfer_account = db.accounts.find_one({'id': new_transaction['cat_or_acct_id']})
+                updated_transfer_acct = update_account_balances('CREATE_TRANS', transfer_account, new_transaction)
+                return_accts.append(updated_transfer_acct)
             
-            # Transition DOWN
-            elif old_reconciled == 'C' and args['reconciled'] == '':
-                # bal_unclr = NO CHANGE
-                bal_clr = round( account['bal_cleared'] - old_amount, 2)
-                # bal_rec = NO CHANGE
-            elif old_reconciled == 'R' and args['reconciled'] == 'C':
-                # bal_unclr = NO CHANGE
-                # bal_clr = NO CHANGE
-                bal_rec = round( account['bal_reconciled'] - old_amount, 2)
-            elif old_reconciled == 'R' and args['reconciled'] == '':
-                # bal_unclr = NO CHANGE
-                bal_clr = round( account['bal_cleared'] - old_amount, 2)
-                bal_rec = round( account['bal_reconciled'] - old_amount, 2)
+            else:
+                pass
+                
+        elif new_transaction['cat_or_acct_id'][0:5] == 'acct_':
+            print 'Category -> Account'
+            # Category -> Account
+            # Check if transfer account exists
+            transfer_account = db.accounts.find_one({'id': new_transaction['cat_or_acct_id']})
+            if not transfer_account:
+                return { 'message': 'Transfer account does not exist', 'status': 400 }, 400
+            # Create new transfer transaction
+            transfer_transaction = new_transaction.copy() # Transaction ID stays same
+            transfer_transaction['reconciled'] = '' # Don't assume we know this type
+            transfer_transaction['amount'] = - new_transaction['amount']
+            transfer_transaction['cat_or_acct_id'] = account_id # Set to originating account
+            db[new_transaction['cat_or_acct_id']].insert(transfer_transaction)
+            # Update new transfer account balances
+            updated_transfer_acct = update_account_balances('CREATE_TRANS', transfer_account, transfer_transaction)
+            return_accts.append(updated_transfer_acct)
         
-        # Perform single db update
-        db.accounts.update({'id': account_id}, {'$set': {'bal_uncleared': bal_unclr},
-                                                '$set': {'bal_cleared': bal_clr},
-                                                '$set': {'bal_reconciled': bal_rec}})
-        return { 'transaction': marshal(transaction, transaction_fields),
-                 'account': {'uri': '/api/accounts/' + account_id, 'bal_uncleared': bal_unclr,
-                             'bal_cleared': bal_clr, 'bal_reconciled': bal_rec} }
-        
+        return { 'transaction': marshal(new_transaction, transaction_fields),
+                 'accounts': return_accts }    
+    
     def delete(self, account_id, trans_id):
         """
         Delete a single transaction
@@ -242,25 +271,33 @@ class TransactionAPI(Resource):
         transaction = db[account_id].find_one({'id':trans_id})
         if not db[account_id].remove({'id':trans_id})['n']:
             abort(404)
-        originating_acct = self.update_balances_on_delete(account_id, account, transaction)
-        return_accts.append(originating_acct)
+        updated_originating_acct = update_account_balances('DELETE_TRANS', account, transaction)
+        return_accts.append(updated_originating_acct)
         
         # Transfer transaction
-        if transaction['cat_or_acct_id'] != None and transaction['cat_or_acct_id'][0:5] == 'acct_':
+        if transaction['cat_or_acct_id'][0:5] == 'acct_':
             transfer_account = db.accounts.find_one({'id': transaction['cat_or_acct_id']})
             transfer_transaction = db[transaction['cat_or_acct_id']].find_one({'id': trans_id})
             if not db[transaction['cat_or_acct_id']].remove({'id':trans_id})['n']:
                 abort(404)
-            transfer_acct = self.update_balances_on_delete(transaction['cat_or_acct_id'], transfer_account, transfer_transaction)
-            return_accts.append(transfer_acct)
+            updated_transfer_acct = update_account_balances('DELETE_TRANS', transfer_account, transfer_transaction)
+            return_accts.append(updated_transfer_acct)
         
         return { 'accounts': return_accts }
 
-    def update_balances_on_delete(self, account_id, account, transaction):
-        bal_unclr = account['bal_uncleared']
-        bal_clr = account['bal_cleared']
-        bal_rec = account['bal_reconciled']
-        
+def update_account_balances(action, account, transaction, old_transaction = None):
+    bal_unclr = account['bal_uncleared']
+    bal_clr = account['bal_cleared']
+    bal_rec = account['bal_reconciled']
+    
+    if action == 'CREATE_TRANS':
+        bal_unclr = round(bal_unclr + transaction['amount'], 2)
+        if transaction['reconciled'] in ['C', 'R']:
+            bal_clr = round(bal_clr + transaction['amount'], 2)
+        if transaction['reconciled'] == 'R':
+            bal_rec = round(bal_rec + transaction['amount'], 2)    
+    
+    elif action == 'DELETE_TRANS':
         if transaction['reconciled'] == '':
             bal_unclr = round( account['bal_uncleared'] - transaction['amount'], 2)
         elif transaction['reconciled'] == 'C':
@@ -271,9 +308,15 @@ class TransactionAPI(Resource):
             bal_clr = round( account['bal_cleared'] - transaction['amount'], 2)
             bal_rec = round( account['bal_reconciled'] - transaction['amount'], 2)
         
-        db.accounts.update({'id': account_id}, {'$set': {'bal_uncleared': bal_unclr},
-                                                '$set': {'bal_cleared': bal_clr},
-                                                '$set': {'bal_reconciled': bal_rec}})
-        return { 'uri': '/api/accounts/' + account_id, 'bal_uncleared': bal_unclr,
-                 'bal_cleared': bal_clr, 'bal_reconciled': bal_rec}
-        
+    else:
+        return None
+    
+    db.accounts.update({'id': account['id']},
+                       {'$set': {'bal_uncleared': bal_unclr,
+                                 'bal_cleared': bal_clr,
+                                 'bal_reconciled': bal_rec}})
+
+    return { 'uri': '/api/accounts/' + account['id'],
+             'bal_uncleared': bal_unclr,
+             'bal_cleared': bal_clr,
+             'bal_reconciled': bal_rec }
